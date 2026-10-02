@@ -1,0 +1,168 @@
+---
+blueprint:
+  name: Shelly button — toggle & hold to dim
+  description: >-
+    Recreates the Shelly dimmer's local button behaviour from Home Assistant
+    for a detached Shelly input. A short press toggles the light; holding the
+    button ramps the brightness until release, stopping at the minimum or at
+    100%. The ramp goes up when the light is off or at its minimum, down when
+    it is at 100%, and otherwise alternates between holds when a direction
+    helper is set (else: up below 50%, down above).
+
+    Works with Adaptive Lighting: a toggle lets it pick the brightness, and a
+    manual dim is detected as manual control until the light is turned off.
+  domain: automation
+  author: TimoPtr
+  # yamllint disable-line rule:line-length
+  source_url: https://github.com/TimoPtr/ha-blueprints/blob/main/blueprints/automation/shelly_button_toggle_dim.yaml
+  homeassistant:
+    min_version: "2026.7.0"
+  input:
+    devices:
+      name: Devices
+      icon: mdi:gesture-tap-button
+      input:
+        button:
+          name: Shelly button
+          description: Event entity of the detached Shelly input.
+          selector:
+            entity:
+              domain: event
+              integration: shelly
+        light:
+          name: Light
+          selector:
+            entity:
+              domain: light
+    settings:
+      name: Dimming
+      icon: mdi:brightness-6
+      collapsed: true
+      input:
+        step_pct:
+          name: Step
+          description: Brightness change per step.
+          default: 5
+          selector:
+            number:
+              min: 1
+              max: 25
+              unit_of_measurement: "%"
+              mode: slider
+        step_interval:
+          name: Step interval
+          description: Time between steps (also used as the transition).
+          default: 250
+          selector:
+            number:
+              min: 100
+              max: 1000
+              step: 50
+              unit_of_measurement: ms
+              mode: slider
+        min_brightness_pct:
+          name: Minimum brightness
+          description: Dimming down stops here instead of turning the light off.
+          default: 1
+          selector:
+            number:
+              min: 1
+              max: 50
+              unit_of_measurement: "%"
+              mode: slider
+        direction_helper:
+          name: Direction helper (optional)
+          description: >-
+            An input_boolean used to remember the last ramp direction so
+            consecutive holds alternate up/down, like the Shelly does.
+            Leave empty to pick the direction from the current brightness.
+          default: ""
+          selector:
+            entity:
+              domain: input_boolean
+
+mode: restart
+max_exceeded: silent
+
+triggers:
+  - trigger: event.received
+    target:
+      entity_id: !input button
+    options:
+      event_type:
+        - single_push
+    id: press
+  - trigger: event.received
+    target:
+      entity_id: !input button
+    options:
+      event_type:
+        - long_push
+    id: hold
+  # Release only needs to restart the run, which stops an ongoing ramp.
+  - trigger: event.received
+    target:
+      entity_id: !input button
+    options:
+      event_type:
+        - btn_up
+    id: release
+
+variables:
+  light_entity: !input light
+  step: !input step_pct
+  interval_ms: !input step_interval
+  min_pct: !input min_brightness_pct
+  dir_helper: !input direction_helper
+
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: press
+        sequence:
+          - action: light.toggle
+            target:
+              entity_id: !input light
+      - conditions:
+          - condition: trigger
+            id: hold
+        sequence:
+          - variables:
+              level: >-
+                {{ ((state_attr(light_entity, 'brightness') | int(0)) / 2.55)
+                   | round(0) | int
+                   if is_state(light_entity, 'on') else 0 }}
+              direction: >-
+                {% if not is_state(light_entity, 'on') or level <= min_pct %}1
+                {% elif level >= 100 %}-1
+                {% elif dir_helper and states(dir_helper) in ['on', 'off'] %}
+                {{ -1 if is_state(dir_helper, 'on') else 1 }}
+                {% else %}{{ 1 if level < 50 else -1 }}{% endif %}
+          # Helper on = last ramp went up, so the next hold goes down.
+          - if:
+              - condition: template
+                value_template: "{{ dir_helper != '' }}"
+            then:
+              - action: >-
+                  input_boolean.turn_{{ 'on' if direction | int == 1
+                  else 'off' }}
+                target:
+                  entity_id: "{{ dir_helper }}"
+          - repeat:
+              sequence:
+                - variables:
+                    level: >-
+                      {{ [[level + direction | int * step, 100] | min,
+                          min_pct] | max }}
+                - action: light.turn_on
+                  target:
+                    entity_id: !input light
+                  data:
+                    brightness_pct: "{{ level }}"
+                    transition: "{{ interval_ms / 1000 }}"
+                - delay:
+                    milliseconds: !input step_interval
+              until:
+                - condition: template
+                  value_template: "{{ level >= 100 or level <= min_pct }}"
