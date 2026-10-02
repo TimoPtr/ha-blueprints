@@ -8,9 +8,6 @@ blueprint:
     100%. The ramp goes up when the light is off or at its minimum, down when
     it is at 100%, and otherwise alternates between holds when a direction
     helper is set (else: up below 50%, down above).
-
-    Works with Adaptive Lighting: a toggle lets it pick the brightness, and a
-    manual dim is detected as manual control until the light is turned off.
   domain: automation
   author: TimoPtr
   # yamllint disable-line rule:line-length

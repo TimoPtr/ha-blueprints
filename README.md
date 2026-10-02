@@ -34,4 +34,4 @@ With the input detached, the button does nothing locally, so it stops working wh
 
 ### Adaptive Lighting
 
-Works alongside [Adaptive Lighting](https://github.com/basnijholt/adaptive-lighting): a short press uses a bare `light.toggle`, so Adaptive Lighting picks the brightness, and dimming by hand is detected as manual control until the light is turned off. Set `adapt_only_on_bare_turn_on: true` so a hold that starts with the light off isn't overridden by Adaptive Lighting on its first step.
+No special setup is needed with [Adaptive Lighting](https://github.com/basnijholt/adaptive-lighting). One tip: set `adapt_only_on_bare_turn_on: true` on its entry, otherwise a hold that starts with the light off is overridden by Adaptive Lighting on its first step.
