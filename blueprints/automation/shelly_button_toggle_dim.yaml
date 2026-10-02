@@ -5,9 +5,10 @@ blueprint:
     Recreates the Shelly dimmer's local button behaviour from Home Assistant
     for a detached Shelly input. A short press toggles the light; holding the
     button ramps the brightness until release, stopping at the minimum or at
-    100%. The ramp goes up when the light is off or at its minimum, down when
-    it is at 100%, and otherwise alternates between holds when a direction
-    helper is set (else: up below 50%, down above).
+    100%. A hold with the light off first turns it on without a brightness,
+    then ramps from there. The ramp goes up at the minimum, down at 100%, and
+    otherwise alternates between holds when a direction helper is set (else:
+    up below 50%, down above).
   domain: automation
   author: TimoPtr
   # yamllint disable-line rule:line-length
@@ -125,6 +126,21 @@ actions:
           - condition: trigger
             id: hold
         sequence:
+          # From off, turn on without a brightness (so Adaptive Lighting or the
+          # light's default picks it), then ramp from the actual level.
+          - if:
+              - condition: state
+                entity_id: !input light
+                state: "off"
+            then:
+              - action: light.turn_on
+                target:
+                  entity_id: !input light
+              # wait_template, not wait_for_trigger: the light may already
+              # report on by the time the wait starts.
+              - wait_template: "{{ is_state(light_entity, 'on') }}"
+                timeout:
+                  seconds: 2
           - variables:
               level: >-
                 {{ ((state_attr(light_entity, 'brightness') | int(0)) / 2.55)

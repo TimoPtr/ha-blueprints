@@ -10,7 +10,8 @@ Recreates the Shelly dimmer's local button behaviour from Home Assistant, for a 
 
 - **Short press** (`single_push`) toggles the light.
 - **Hold** (`long_push`) ramps the brightness until the button is released (`btn_up`), stopping at the minimum brightness or at 100% — it never dims the light off.
-- **Direction**: up when the light is off or at its minimum, down at 100%. Otherwise, with an optional `input_boolean` direction helper, consecutive holds alternate up/down like the Shelly does; without it, up below 50% and down above.
+- **Hold with the light off** first turns it on without a brightness (so Adaptive Lighting or the light's own default picks it), then ramps from there.
+- **Direction**: up at the minimum, down at 100%. Otherwise, with an optional `input_boolean` direction helper, consecutive holds alternate up/down like the Shelly does; without it, up below 50% and down above.
 
 Uses the Shelly `event.*` entity (not a device trigger), so it survives a device re-add.
 
@@ -34,4 +35,4 @@ With the input detached, the button does nothing locally, so it stops working wh
 
 ### Adaptive Lighting
 
-No special setup is needed with [Adaptive Lighting](https://github.com/basnijholt/adaptive-lighting). One tip: set `adapt_only_on_bare_turn_on: true` on its entry, otherwise a hold that starts with the light off is overridden by Adaptive Lighting on its first step.
+No special setup is needed with [Adaptive Lighting](https://github.com/basnijholt/adaptive-lighting): every turn-on (short press, or a hold from off) is a bare `light.turn_on`/`light.toggle`, so Adaptive Lighting picks the brightness, and dimming by hand is then detected as manual control until the light is turned off.
