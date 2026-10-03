@@ -13,6 +13,8 @@ Recreates the Shelly dimmer's local button behaviour from Home Assistant, for a 
 - **Hold with the light off** first turns it on without a brightness (so Adaptive Lighting or the light's own default picks it), then ramps from there.
 - **Direction**: up at the minimum, down at 100%. Otherwise, with an optional `input_boolean` direction helper, consecutive holds alternate up/down like the Shelly does; without it, up below 50% and down above.
 
+Several buttons can control the same light (e.g. two switches at both ends of a corridor): all of them toggle and dim it, and the dimming direction is shared between them.
+
 Uses the Shelly `event.*` entity (not a device trigger), so it survives a device re-add.
 
 ### Requirements

@@ -21,12 +21,15 @@ blueprint:
       icon: mdi:gesture-tap-button
       input:
         button:
-          name: Shelly button
-          description: Event entity of the detached Shelly input.
+          name: Shelly buttons
+          description: >-
+            Event entities of the detached Shelly inputs controlling the light,
+            e.g. two switches at both ends of a corridor.
           selector:
             entity:
               domain: event
               integration: shelly
+              multiple: true
         light:
           name: Light
           selector:
